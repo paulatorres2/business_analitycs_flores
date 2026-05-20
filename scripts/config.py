@@ -4,7 +4,7 @@ import os
 
 # Rutas
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-FILE_PATH = r"C:\Users\1003t\OneDrive\Escritorio\business_analitycs_flores\data\PROGRAMACIÓN Y CONTROL 2026.xlsx"
+FILE_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "PROGRAMACIÓN Y CONTROL 2026.xlsx")
 
 # Columnas de defectos
 DEFECT_COLS = [
