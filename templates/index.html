@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Dashboard Analytics · Programación & Control 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* ── DESIGN TOKENS ── */
+:root {
+  --bg: #0a0e1a;
+  --surface: #0f1629;
+  --surface2: #151d2f;
+  --border: #1f2a3f;
+  --accent: #f287f2;
+  --accent2: #17A09A;
+  --accent3: #FFBA7B;
+  --accent4: #00D9FF;
+  --danger: #ef4444;
+  --text: #e2e8f0;
+  --text-muted: #3455bf;
+  --radius: 12px;
+  --shadow: 0 4px 24px rgba(0,0,0,.45);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: 220px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  z-index: 100; padding: 0 0 16px;
+  transition: transform .3s;
+}
+.sidebar-logo {
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-logo h2 { font-size: 13px; font-weight: 700; color: var(--accent); letter-spacing: .5px; }
+.sidebar-logo p { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.nav { flex: 1; padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; }
+.nav a {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 8px;
+  color: var(--text-muted); text-decoration: none;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.nav a:hover, .nav a.active {
+  background: rgba(255, 107, 157, 0.15); color: var(--accent);
+}
+.nav a svg { width: 16px; height: 16px; flex-shrink: 0; }
+.nav-section { padding: 8px 12px 4px; font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+.sidebar-footer { padding: 12px 20px 0; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-muted); }
+
+/* ── MAIN CONTENT ── */
+.main { margin-left: 220px; min-height: 100vh; }
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(10, 14, 26, 0.85); backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 28px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.topbar h1 { font-size: 16px; font-weight: 700; }
+.topbar span { font-size: 12px; color: var(--text-muted); }
+.badge { background: rgba(255, 107, 157, 0.2); color: var(--accent); padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+
+/* ── PAGE SECTIONS ── */
+.page { display: none; padding: 24px 28px; }
+.page.active { display: block; }
+
+/* ── PROBLEM STATEMENT ── */
+.problem-card {
+  background: linear-gradient(135deg, #0f1629 0%, #1f2a3f 60%);
+  border: 1px solid rgba(255, 107, 157, 0.2);
+  border-radius: var(--radius);
+  padding: 28px 32px;
+  margin-bottom: 24px;
+}
+.problem-card h2 { font-size: 20px; font-weight: 800; margin-bottom: 10px; color: var(--accent2); }
+.problem-card p { color: #b8a2d0; font-size: 14px; line-height: 1.8; max-width: 800px; }
+.problem-list { margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.problem-item {
+  background: rgba(255,255,255,.04); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px 16px;
+  font-size: 13px; color: var(--text);
+  display: flex; align-items: flex-start; gap: 10px;
+}
+.problem-item span.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent3); flex-shrink: 0; margin-top: 5px; }
+
+/* ── DATASET INFO ── */
+.info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.info-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px;
+}
+.info-card .val { font-size: 22px; font-weight: 800; color: var(--accent); }
+.info-card .lbl { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* ── KPI CARDS ── */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+.kpi-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px 22px;
+  position: relative; overflow: hidden; transition: transform .15s;
+}
+.kpi-card:hover { transform: translateY(-2px); }
+.kpi-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+}
+.kpi-card.c1::before { background: var(--accent); }
+.kpi-card.c2::before { background: var(--accent2); }
+.kpi-card.c3::before { background: var(--danger); }
+.kpi-card.c4::before { background: var(--accent4); }
+.kpi-card .kpi-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; font-size: 18px; }
+.kpi-card.c1 .kpi-icon { background: rgba(255, 107, 157, 0.15); }
+.kpi-card.c2 .kpi-icon { background: rgba(23, 160, 154, 0.15); }
+.kpi-card.c3 .kpi-icon { background: rgba(255, 186, 123, 0.2); }
+.kpi-card.c4 .kpi-icon { background: rgba(0, 217, 255, 0.15); }
+.kpi-card .kpi-val { font-size: 28px; font-weight: 800; line-height: 1; }
+.kpi-card.c1 .kpi-val { color: var(--accent); }
+.kpi-card.c2 .kpi-val { color: var(--accent2); }
+.kpi-card.c3 .kpi-val { color: var(--danger); }
+.kpi-card.c4 .kpi-val { color: var(--accent4); }
+.kpi-card .kpi-lbl { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+.kpi-card .kpi-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* ── SECTION TITLES ── */
+.section-title { font-size: 15px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.section-title::before { content: ''; display: block; width: 4px; height: 18px; background: var(--accent); border-radius: 2px; }
+
+/* ── CHART GRID ── */
+.chart-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-bottom: 24px; }
+.chart-grid.cols3 { grid-template-columns: repeat(3, 1fr); }
+.chart-grid.full { grid-template-columns: 1fr; }
+.chart-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px;
+}
+.chart-card.span2 { grid-column: span 2; }
+.chart-card h3 { font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 16px; text-transform: uppercase; letter-spacing: .5px; }
+.chart-wrap { position: relative; height: 280px; }
+.chart-wrap.tall { height: 340px; }
+.chart-wrap.short { height: 200px; }
+
+/* ── ML SECTION ── */
+.ml-header {
+  background: linear-gradient(135deg, #0f1629 0%, #1f2a3f 70%);
+  border: 1px solid rgba(255, 107, 157, 0.2); border-radius: var(--radius);
+  padding: 24px 28px; margin-bottom: 24px;
+  display: flex; align-items: center; gap: 20px;
+  
+}
+.ml-header .ml-icon { font-size: 36px; flex-shrink: 0; }
+.ml-header h2 { font-size: 18px; font-weight: 800; color: var(--accent2); }
+.ml-header p { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+.ml-tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+.ml-tab {
+  padding: 9px 18px; border-radius: 8px; cursor: pointer;
+  font-size: 13px; font-weight: 600; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-muted);
+  transition: all .15s;
+}
+.ml-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ml-tab:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+.ml-panel { display: none; }
+.ml-panel.active { display: block; }
+.ml-meta {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px; margin-bottom: 24px;
+}
+.ml-stat {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 16px 18px;
+}
+.ml-stat .val { font-size: 20px; font-weight: 800; color: var(--accent2); }
+.ml-stat .lbl { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+.insight-box {
+  background: rgba(23, 160, 154, 0.08); border: 1px solid rgba(23, 160, 154, 0.2);
+  border-radius: 10px; padding: 14px 18px;
+  font-size: 13px; color: var(--text); margin-bottom: 20px; line-height: 1.7;
+}
+.insight-box strong { color: var(--accent); }
+.cluster-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.cluster-card {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 16px;
+}
+.cluster-card h4 { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+.cluster-card.cl0 h4 { color: #FF6B9D; }
+.cluster-card.cl1 h4 { color: #FFBA7B; }
+.cluster-card.cl2 h4 { color: #17A09A; }
+.cluster-card.cl3 h4 { color: #00D9FF; }
+.cluster-card .c-stat { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+.cluster-card .c-stat strong { color: var(--text); }
+.pill-list { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+.pill { background: rgba(255,255,255,.06); border-radius: 20px; padding: 3px 9px; font-size: 10px; color: var(--text-muted); }
+
+/* ── LOADING SPINNER ── */
+.spinner-wrap { display: flex; align-items: center; justify-content: center; height: 200px; }
+.spinner {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 3px solid var(--border); border-top-color: var(--accent);
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 900px) {
+  .chart-grid { grid-template-columns: 1fr; }
+  .chart-card.span2 { grid-column: span 1; }
+}
+@media (max-width: 680px) {
+  .sidebar { transform: translateX(-100%); }
+  .main { margin-left: 0; }
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <h2>ANALITICA DE UNA PLANTA FLORICULTORA</h2>
+    <p>Control de Inventario</p>
+  </div>
+  <div class="nav">
+    <div class="nav-section">Diagnóstico</div>
+    <a onclick="showPage('problematics')" class="active" id="nav-problematics">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Problemática
+    </a>
+    <a onclick="showPage('dataset')" id="nav-dataset">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
+      Dataset
+    </a>
+    <div class="nav-section">KPIs & Análisis</div>
+    <a onclick="showPage('kpis')" id="nav-kpis">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Indicadores KPI
+    </a>
+    <a onclick="showPage('suppliers')" id="nav-suppliers">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Proveedores
+    </a>
+    <a onclick="showPage('quality')" id="nav-quality">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      Calidad
+    </a>
+    <div class="nav-section">Machine Learning</div>
+    <a onclick="showPage('ml')" id="nav-ml">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      Modelos ML
+    </a>
+  </div>
+  <div class="sidebar-footer">Dataset: BASE GENERAL · 2026</div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <h1>Dashboard Business Analytics</h1>
+    <div style="display:flex;gap:10px;align-items:center">
+      <span id="topbar-subtitle">Cargando datos…</span>
+      <span class="badge">LIVE</span>
+    </div>
+  </div>
+
+  <!-- ── PAGE: PROBLEMÁTICA ── -->
+  <div class="page active" id="page-problematics">
+    <div class="problem-card">
+      <h2>Problemática Detectada en el Negocio</h2>
+      <p>La industria florícola colombiana enfrenta retos críticos de trazabilidad, calidad y eficiencia en la cadena de suministro. Este dashboard analiza <strong>14,911 registros</strong> de entregas de proveedores durante el primer ciclo de 2026, permitiendo identificar cuellos de botella en el cumplimiento de proyecciones, volúmenes exportados vs. rechazados, y la calidad fitosanitaria por finca abastecedora.</p>
+      <div class="problem-list">
+        <div class="problem-item"><span class="dot"></span>Brecha entre tallos proyectados y tallos recibidos por proveedor</div>
+        <div class="problem-item"><span class="dot"></span>Variabilidad en calidad: defectos fitosanitarios y físicos no detectados a tiempo</div>
+        <div class="problem-item"><span class="dot"></span>Alta proporción de flor nacional vs. exportación en proveedores clave</div>
+        <div class="problem-item"><span class="dot"></span>Inconsistencia en cumplimiento semanal: proveedores con desviaciones extremas</div>
+        <div class="problem-item"><span class="dot"></span>Necesidad de segmentación estratégica del portafolio de proveedores</div>
+        <div class="problem-item"><span class="dot"></span>Falta de herramientas predictivas para anticipar incumplimientos y anomalías</div>
+      </div>
+    </div>
+
+    <div class="section-title">Objetivos del Dashboard</div>
+    <div class="chart-grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
+      <div class="chart-card" style="border-left:3px solid var(--accent)">
+        <h3>Análisis Descriptivo</h3>
+        <p style="color:var(--text-muted);font-size:13px;line-height:1.7">Visualizar KPIs clave de cumplimiento, exportación, rechazo y calidad con datos reales del periodo analizado.</p>
+      </div>
+      <div class="chart-card" style="border-left:3px solid var(--accent2)">
+        <h3>Diagnóstico Proveedores</h3>
+        <p style="color:var(--text-muted);font-size:13px;line-height:1.7">Identificar los top proveedores por volumen, calidad y desviación; segmentarlos estratégicamente para la toma de decisiones.</p>
+      </div>
+      <div class="chart-card" style="border-left:3px solid var(--accent4)">
+        <h3>Modelos Predictivos ML</h3>
+        <p style="color:var(--text-muted);font-size:13px;line-height:1.7">Aplicar Random Forest, K-Means, Isolation Forest y regresión para predecir cumplimiento, detectar anomalías y proyectar demanda.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PAGE: DATASET ── -->
+  <div class="page" id="page-dataset">
+    <div class="section-title">Información del Dataset · BASE GENERAL</div>
+    <div class="info-grid" id="info-grid">
+      <div class="spinner-wrap"><div class="spinner"></div></div>
+    </div>
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3>Distribución por Destino</h3>
+        <div class="chart-wrap"><canvas id="chart-lugar"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Distribución por Estado de Entrega</h3>
+        <div class="chart-wrap"><canvas id="chart-estado"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-grid full">
+      <div class="chart-card">
+        <h3>Tasa de Defectos por Semana (%)</h3>
+        <div class="chart-wrap"><canvas id="chart-defects-week"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PAGE: KPIs ── -->
+  <div class="page" id="page-kpis">
+    <div class="kpi-grid" id="kpi-grid">
+      <div class="spinner-wrap"><div class="spinner"></div></div>
+    </div>
+    <div class="section-title">Tendencia Semanal · Tallos Recibidos vs Proyección</div>
+    <div class="chart-grid full">
+      <div class="chart-card">
+        <h3>Evolución Semanal de Tallos</h3>
+        <div class="chart-wrap tall"><canvas id="chart-weekly"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3>Top 10 Defectos por Frecuencia</h3>
+        <div class="chart-wrap"><canvas id="chart-defects"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Calidad Promedio por Proveedor (Top 10)</h3>
+        <div class="chart-wrap"><canvas id="chart-quality-prov"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PAGE: SUPPLIERS ── -->
+  <div class="page" id="page-suppliers">
+    <div class="section-title">Análisis de Proveedores</div>
+    <div class="chart-grid full">
+      <div class="chart-card">
+        <h3>Top 10 Proveedores por Volumen de Tallos Recibidos</h3>
+        <div class="chart-wrap tall"><canvas id="chart-top-suppliers"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-grid full">
+      <div class="chart-card">
+        <h3>Top 10 Proveedores con Mayor Desviación en Cumplimiento</h3>
+        <div class="chart-wrap tall"><canvas id="chart-deviation"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PAGE: QUALITY ── -->
+  <div class="page" id="page-quality">
+    <div class="section-title">Análisis de Calidad y Defectos</div>
+    <div class="chart-grid">
+      <div class="chart-card span2">
+        <h3>Mapa de Defectos · Distribución Total por Tipo</h3>
+        <div class="chart-wrap tall"><canvas id="chart-defects2"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3>Tendencia de Defectos Semanales (%)</h3>
+        <div class="chart-wrap"><canvas id="chart-defects-week2"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Calidad por Proveedor · Índice Promedio</h3>
+        <div class="chart-wrap"><canvas id="chart-quality2"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PAGE: ML ── -->
+  <div class="page" id="page-ml">
+    <div class="ml-header">
+      <div>
+        <h2>Modelos de Machine Learning</h2>
+        <p>Predicción, segmentación, detección de anomalías y proyección de demanda con datos reales del dataset elegido.</p>
+      </div>
+    </div>
+
+    <div class="ml-tabs">
+      <div class="ml-tab active" onclick="showMLPanel('compliance')">Predicción Cumplimiento</div>
+      <div class="ml-tab" onclick="showMLPanel('cluster')">Clustering Proveedores</div>
+      <div class="ml-tab" onclick="showMLPanel('anomaly')">Detección Anomalías</div>
+      <div class="ml-tab" onclick="showMLPanel('forecast')">Forecast Demanda</div>
+    </div>
+
+    <!-- COMPLIANCE -->
+    <div class="ml-panel active" id="ml-compliance">
+      <div class="ml-meta" id="ml-compliance-meta">
+        <div class="spinner-wrap"><div class="spinner"></div></div>
+      </div>
+      <div class="insight-box" id="ml-compliance-insight">Cargando modelo…</div>
+      <div class="chart-grid">
+        <div class="chart-card">
+          <h3>Importancia de Variables (Random Forest)</h3>
+          <div class="chart-wrap"><canvas id="chart-rf-importance"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Real vs Predicho · % Cumplimiento</h3>
+          <div class="chart-wrap"><canvas id="chart-rf-scatter"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CLUSTER -->
+    <div class="ml-panel" id="ml-cluster">
+      <div class="ml-meta" id="ml-cluster-meta">
+        <div class="spinner-wrap"><div class="spinner"></div></div>
+      </div>
+      <div class="insight-box" id="ml-cluster-insight">Cargando modelo…</div>
+      <div class="cluster-grid" id="ml-cluster-cards"></div>
+      <div class="chart-grid full">
+        <div class="chart-card">
+          <h3>Scatter Clusters · Cumplimiento vs Calidad</h3>
+          <div class="chart-wrap"><canvas id="chart-cluster-scatter"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANOMALY -->
+    <div class="ml-panel" id="ml-anomaly">
+      <div class="ml-meta" id="ml-anomaly-meta">
+        <div class="spinner-wrap"><div class="spinner"></div></div>
+      </div>
+      <div class="insight-box" id="ml-anomaly-insight">Cargando modelo…</div>
+      <div class="chart-grid">
+        <div class="chart-card">
+          <h3>Proveedores con más Anomalías Detectadas</h3>
+          <div class="chart-wrap"><canvas id="chart-anomaly-prov"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Normal vs Anómalo · Cumplimiento vs Defectos</h3>
+          <div class="chart-wrap"><canvas id="chart-anomaly-scatter"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FORECAST -->
+    <div class="ml-panel" id="ml-forecast">
+      <div class="ml-meta" id="ml-forecast-meta">
+        <div class="spinner-wrap"><div class="spinner"></div></div>
+      </div>
+      <div class="insight-box" id="ml-forecast-insight">Cargando modelo…</div>
+      <div class="chart-grid full">
+        <div class="chart-card">
+          <h3>Forecast Semanal · Tallos Recibidos + Proyección (+4 semanas)</h3>
+          <div class="chart-wrap tall"><canvas id="chart-forecast"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+// ── NAVIGATION ──
+const pages = ['problematics','dataset','kpis','suppliers','quality','ml'];
+let initializedPages = {};
+let mlLoaded = {};
+
+function showPage(name) {
+  pages.forEach(p => {
+    document.getElementById('page-'+p).classList.remove('active');
+    const nav = document.getElementById('nav-'+p);
+    if(nav) nav.classList.remove('active');
+  });
+  document.getElementById('page-'+name).classList.add('active');
+  const nav = document.getElementById('nav-'+name);
+  if(nav) nav.classList.add('active');
+  if(!initializedPages[name]) {
+    initializedPages[name] = true;
+    loadPage(name);
+  }
+}
+
+function showMLPanel(name) {
+  document.querySelectorAll('.ml-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.ml-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('ml-'+name).classList.add('active');
+  event.target.classList.add('active');
+  if(!mlLoaded[name]) { mlLoaded[name] = true; loadML(name); }
+}
+
+// ── COLOR PALETTE ──
+const PALETTE = ['#6366f1','#22d3ee','#10b981','#f59e0b','#ef4444','#a78bfa','#34d399','#fbbf24','#f87171','#60a5fa','#e879f9','#4ade80'];
+const gridColor = 'rgba(249,232,255,0.06)';
+
+function mkChart(id, type, data, options={}) {
+  const canvas = document.getElementById(id);
+  if(!canvas) return;
+  if(canvas._chart) canvas._chart.destroy();
+  const defaults = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: '#c090b8', font: { size: 11 } } } },
+    scales: type !== 'pie' && type !== 'doughnut' ? {
+      x: { grid: { color: gridColor }, ticks: { color: '#c090b8', font: { size: 10 } } },
+      y: { grid: { color: gridColor }, ticks: { color: '#c090b8', font: { size: 10 } } }
+    } : {}
+  };
+  const mergedOpts = deepMerge(defaults, options);
+  canvas._chart = new Chart(canvas, { type, data, options: mergedOpts });
+  return canvas._chart;
+}
+
+function deepMerge(a, b) {
+  const out = Object.assign({}, a);
+  for(const k in b) {
+    if(b[k] && typeof b[k]==='object' && !Array.isArray(b[k]) && a[k] && typeof a[k]==='object')
+      out[k] = deepMerge(a[k], b[k]);
+    else out[k] = b[k];
+  }
+  return out;
+}
+
+// ── FETCH HELPERS ──
+async function get(url) { const r = await fetch(url); return r.json(); }
+
+function fmt(n, suffix='') { return n !== undefined ? n.toLocaleString('es-CO', {maximumFractionDigits:1}) + suffix : '—'; }
+
+// ── LOAD KPIs + TOPBAR ──
+async function loadKPIs() {
+  const d = await get('/api/kpis');
+  document.getElementById('topbar-subtitle').textContent = `${d.total_registros.toLocaleString()} registros · ${d.total_proveedores} proveedores`;
+
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi-card c1"><div class="kpi-icon">📋</div><div class="kpi-val">${fmt(d.cumplimiento_prom,'%')}</div><div class="kpi-lbl">Cumplimiento Promedio de Proyección</div><div class="kpi-sub">Mediana entre todos los registros</div></div>
+    <div class="kpi-card c2"><div class="kpi-icon">✈️</div><div class="kpi-val">${fmt(d.tasa_exportacion,'%')}</div><div class="kpi-lbl">Tasa de Exportación</div><div class="kpi-sub">Tallos exportados / total recibidos</div></div>
+    <div class="kpi-card c3"><div class="kpi-icon">🚫</div><div class="kpi-val">${fmt(d.tasa_rechazo_nacional,'%')}</div><div class="kpi-lbl">Tasa de Rechazo Nacional</div><div class="kpi-sub">Flor nacional / total recibidos</div></div>
+    <div class="kpi-card c4"><div class="kpi-icon">⭐</div><div class="kpi-val">${fmt(d.indice_calidad,'%')}</div><div class="kpi-lbl">Índice de Calidad</div><div class="kpi-sub">1 − (defectos / tallos) promedio</div></div>
+    <div class="kpi-card c1"><div class="kpi-icon">🌸</div><div class="kpi-val">${(d.total_tallos/1e6).toFixed(2)}M</div><div class="kpi-lbl">Total Tallos Recibidos</div><div class="kpi-sub">Suma acumulada del periodo</div></div>
+    <div class="kpi-card c2"><div class="kpi-icon">🏭</div><div class="kpi-val">${d.total_proveedores}</div><div class="kpi-lbl">Proveedores Activos</div><div class="kpi-sub">Fincas únicas registradas</div></div>
+    <div class="kpi-card c3"><div class="kpi-icon">📅</div><div class="kpi-val">${d.semanas}</div><div class="kpi-lbl">Semanas Cubiertas</div><div class="kpi-sub">Ciclo de programación 2026</div></div>
+    <div class="kpi-card c4"><div class="kpi-icon">📑</div><div class="kpi-val">${(d.total_registros/1e3).toFixed(1)}k</div><div class="kpi-lbl">Registros en Dataset</div><div class="kpi-sub">Filas limpias procesadas</div></div>
+  `;
+}
+
+// ── LOAD DATASET INFO ──
+async function loadDatasetInfo() {
+  const d = await get('/api/dataset-info');
+  const grid = document.getElementById('info-grid');
+  grid.innerHTML = `
+    <div class="info-card"><div class="val">${d.filas_limpias.toLocaleString()}</div><div class="lbl">Filas limpias</div></div>
+    <div class="info-card"><div class="val">${d.columnas}</div><div class="lbl">Columnas</div></div>
+    <div class="info-card"><div class="val">${d.proveedores_unicos}</div><div class="lbl">Proveedores únicos</div></div>
+    <div class="info-card"><div class="val">${d.variedades_unicas}</div><div class="lbl">Variedades</div></div>
+    <div class="info-card"><div class="val">${d.lugares_destino}</div><div class="lbl">Destinos</div></div>
+    <div class="info-card"><div class="val">${d.semanas_cubiertas}</div><div class="lbl">Semanas</div></div>
+    <div class="info-card"><div class="val">${d.pct_nulos}%</div><div class="lbl">% Nulos promedio</div></div>
+    <div class="info-card"><div class="val">${d.fecha_inicio}</div><div class="lbl">Fecha inicio</div></div>
+    <div class="info-card"><div class="val">${d.fecha_fin}</div><div class="lbl">Fecha fin</div></div>
+    <div class="info-card"><div class="val">${d.columnas_numericas}</div><div class="lbl">Cols numéricas</div></div>
+    <div class="info-card"><div class="val">${d.columnas_categoricas}</div><div class="lbl">Cols categóricas</div></div>
+    <div class="info-card" style="grid-column:span 1">
+      <div class="val" style="font-size:14px">Preprocesamiento</div>
+      <div class="lbl" style="margin-top:8px;line-height:1.8">
+        Tipos convertidos<br>
+        Defectos rellenados con 0<br>
+        Columnas derivadas<br>
+        Filas vacías eliminadas
+      </div>
+    </div>
+  `;
+  const [lugar, estado, defW] = await Promise.all([
+    get('/api/charts/lugar-distribution'),
+    get('/api/charts/estado-distribution'),
+    get('/api/charts/defects-over-weeks'),
+  ]);
+  mkChart('chart-lugar', 'doughnut', {
+    labels: lugar.labels,
+    datasets: [{ data: lugar.values, backgroundColor: PALETTE, borderWidth: 0 }]
+  }, { plugins: { legend: { position: 'right', labels: { font:{size:10}, color:'#c090b8', boxWidth:12 } } } });
+
+  mkChart('chart-estado', 'pie', {
+    labels: estado.labels,
+    datasets: [{ data: estado.values, backgroundColor: PALETTE, borderWidth: 0 }]
+  }, { plugins: { legend: { position: 'right', labels: { font:{size:10}, color:'#c090b8', boxWidth:12 } } } });
+
+  mkChart('chart-defects-week', 'line', {
+    labels: defW.semanas,
+    datasets: [{ label: 'Tasa Defectos %', data: defW.tasa, borderColor: PALETTE[4], backgroundColor: 'rgba(139,0,56,.1)', fill: true, tension: 0.4, pointRadius: 3 }]
+  });
+}
+
+// ── LOAD KPI CHARTS ──
+async function loadKPICharts() {
+  const [weekly, defects, quality] = await Promise.all([
+    get('/api/charts/weekly-trend'),
+    get('/api/charts/top-defects'),
+    get('/api/charts/quality-by-supplier'),
+  ]);
+
+  mkChart('chart-weekly', 'line', {
+    labels: weekly.semanas,
+    datasets: [
+      { label: 'Tallos Recibidos', data: weekly.tallos, borderColor: PALETTE[0], backgroundColor: 'rgba(168,154,232,.1)', fill: true, tension: 0.4 },
+      { label: 'Proyección', data: weekly.proyeccion, borderColor: PALETTE[2], borderDash: [5,5], tension: 0.4, pointRadius: 0 },
+      { label: 'Exportación', data: weekly.exportacion, borderColor: PALETTE[1], tension: 0.4, pointRadius: 2 },
+    ]
+  });
+
+  mkChart('chart-defects', 'bar', {
+    labels: defects.labels,
+    datasets: [{ label: 'Tallos afectados', data: defects.values, backgroundColor: defects.labels.map((_,i) => PALETTE[i % PALETTE.length]), borderRadius: 4 }]
+  }, { indexAxis: 'y', plugins: { legend: { display: false } } });
+
+  mkChart('chart-quality-prov', 'bar', {
+    labels: quality.labels,
+    datasets: [{ label: 'Índice Calidad %', data: quality.values, backgroundColor: quality.labels.map((_,i) => PALETTE[i % PALETTE.length]), borderRadius: 4 }]
+  }, { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { min: 80, max: 100, grid:{color:gridColor}, ticks:{color:'#c090b8'} }, y: { grid:{color:gridColor}, ticks:{color:'#c090b8', font:{size:10}} } } });
+}
+
+// ── LOAD SUPPLIERS ──
+async function loadSuppliers() {
+  const [top, dev] = await Promise.all([
+    get('/api/charts/top-suppliers'),
+    get('/api/charts/supplier-deviation'),
+  ]);
+
+  mkChart('chart-top-suppliers', 'bar', {
+    labels: top.labels,
+    datasets: [{ label: 'Tallos Recibidos', data: top.values, backgroundColor: top.labels.map((_,i) => PALETTE[i % PALETTE.length]), borderRadius: 5 }]
+  }, { plugins: { legend: { display: false } } });
+
+  mkChart('chart-deviation', 'bar', {
+    labels: dev.labels,
+    datasets: [
+      { label: 'Media Cumplimiento %', data: dev.media, backgroundColor: 'rgba(168,154,232,.6)', borderRadius: 4 },
+      { label: 'Desviación Estándar', data: dev.desviacion, backgroundColor: 'rgba(139,0,56,.6)', borderRadius: 4 },
+    ]
+  });
+}
+
+// ── LOAD QUALITY ──
+async function loadQuality() {
+  const [defects, defW, quality] = await Promise.all([
+    get('/api/charts/top-defects'),
+    get('/api/charts/defects-over-weeks'),
+    get('/api/charts/quality-by-supplier'),
+  ]);
+
+  mkChart('chart-defects2', 'bar', {
+    labels: defects.labels,
+    datasets: [{ label: 'Total Tallos Afectados', data: defects.values, backgroundColor: defects.labels.map((_,i) => PALETTE[i % PALETTE.length]), borderRadius: 4 }]
+  }, { plugins: { legend: { display: false } } });
+
+  mkChart('chart-defects-week2', 'line', {
+    labels: defW.semanas,
+    datasets: [{ label: 'Tasa Defectos %', data: defW.tasa, borderColor: PALETTE[4], backgroundColor: 'rgba(139,0,56,.1)', fill: true, tension: 0.4, pointRadius: 3 }]
+  });
+
+  mkChart('chart-quality2', 'bar', {
+    labels: quality.labels,
+    datasets: [{ label: 'Índice Calidad %', data: quality.values, backgroundColor: quality.labels.map((_,i) => PALETTE[i % PALETTE.length]), borderRadius: 4 }]
+  }, { indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{min:80,max:100,grid:{color:gridColor},ticks:{color:'#c090b8'}},y:{grid:{color:gridColor},ticks:{color:'#c090b8',font:{size:10}}}} });
+}
+
+// ── LOAD ML ──
+async function loadML(name) {
+  if(name === 'compliance') {
+    const d = await get('/api/ml/compliance');
+    document.getElementById('ml-compliance-meta').innerHTML = `
+      <div class="ml-stat"><div class="val">${d.model}</div><div class="lbl">Modelo</div></div>
+      <div class="ml-stat"><div class="val">${(d.r2*100).toFixed(1)}%</div><div class="lbl">R² Score</div></div>
+      <div class="ml-stat"><div class="val">${d.mae.toFixed(1)} pp</div><div class="lbl">Error Absoluto Medio</div></div>
+      <div class="ml-stat"><div class="val">80/20</div><div class="lbl">Train/Test Split</div></div>
+    `;
+    document.getElementById('ml-compliance-insight').innerHTML = `<strong>Insight:</strong> ${d.insight}`;
+
+    const imp = d.importances;
+    const sortedImp = Object.entries(imp).sort((a,b) => b[1]-a[1]);
+    mkChart('chart-rf-importance', 'bar', {
+      labels: sortedImp.map(x=>x[0]),
+      datasets: [{ label: 'Importancia', data: sortedImp.map(x=>x[1]), backgroundColor: sortedImp.map((_,i)=>PALETTE[i%PALETTE.length]), borderRadius:4 }]
+    }, { indexAxis:'y', plugins:{legend:{display:false}} });
+
+    mkChart('chart-rf-scatter', 'scatter', {
+      datasets: [{
+        label: 'Predicciones',
+        data: d.scatter.actual.map((a,i) => ({x:a, y:d.scatter.predicted[i]})),
+        backgroundColor: 'rgba(168,154,232,.5)', pointRadius: 3
+      }, {
+        label: 'Línea perfecta',
+        data: [{x:0,y:0},{x:300,y:300}],
+        type:'line', borderColor:'#8b0038', borderDash:[5,5], pointRadius:0
+      }]
+    }, { scales:{ x:{title:{display:true,text:'Real',color:'#c090b8'},grid:{color:gridColor},ticks:{color:'#c090b8'}}, y:{title:{display:true,text:'Predicho',color:'#c090b8'},grid:{color:gridColor},ticks:{color:'#c090b8'}} } });
+  }
+
+  if(name === 'cluster') {
+    const d = await get('/api/ml/clusters');
+    document.getElementById('ml-cluster-meta').innerHTML = `
+      <div class="ml-stat"><div class="val">${d.model}</div><div class="lbl">Modelo</div></div>
+      <div class="ml-stat"><div class="val">${d.clusters.reduce((s,c)=>s+c.count,0)}</div><div class="lbl">Proveedores segmentados</div></div>
+      <div class="ml-stat"><div class="val">4 grupos</div><div class="lbl">Clusters identificados</div></div>
+    `;
+    document.getElementById('ml-cluster-insight').innerHTML = `<strong>Insight:</strong> ${d.insight}`;
+
+    const colors = ['#a89ae8','#8b0038','#e8bfff','#f9e8ff'];
+    const cards = d.clusters.map(c => `
+      <div class="cluster-card cl${c.cluster}">
+        <h4>Grupo ${c.cluster}: ${c.label}</h4>
+        <div class="c-stat">Proveedores: <strong>${c.count}</strong></div>
+        <div class="c-stat">Cumplimiento promedio: <strong>${c.avg_cumplimiento.toFixed(1)}%</strong></div>
+        <div class="c-stat">Índice calidad: <strong>${c.avg_calidad.toFixed(1)}%</strong></div>
+        <div class="c-stat">Total tallos: <strong>${c.total_tallos.toLocaleString()}</strong></div>
+        <div class="pill-list">${c.proveedores.map(p=>`<span class="pill">${p.substring(0,18)}</span>`).join('')}</div>
+      </div>
+    `).join('');
+    document.getElementById('ml-cluster-cards').innerHTML = cards;
+
+    const datasets = d.clusters.map((c,i) => ({
+      label: `Grupo ${c.cluster}: ${c.label}`,
+      data: d.scatter.x.map((x,idx) => d.scatter.cluster[idx]===c.cluster ? {x, y:d.scatter.y[idx]} : null).filter(Boolean),
+      backgroundColor: colors[i] + '99', pointRadius: 5
+    }));
+    mkChart('chart-cluster-scatter', 'scatter', { datasets }, {
+      scales:{
+        x:{title:{display:true,text:'Cumplimiento %',color:'#c090b8'},grid:{color:gridColor},ticks:{color:'#c090b8'}},
+        y:{title:{display:true,text:'Índice Calidad %',color:'#c090b8'},grid:{color:gridColor},ticks:{color:'#c090b8'}}
+      }
+    });
+  }
+
+  if(name === 'anomaly') {
+    const d = await get('/api/ml/anomaly');
+    document.getElementById('ml-anomaly-meta').innerHTML = `
+      <div class="ml-stat"><div class="val">${d.model}</div><div class="lbl">Modelo</div></div>
+      <div class="ml-stat"><div class="val">${d.total_anomalias.toLocaleString()}</div><div class="lbl">Anomalías detectadas</div></div>
+      <div class="ml-stat"><div class="val">${d.pct_anomalias.toFixed(1)}%</div><div class="lbl">% del total</div></div>
+      <div class="ml-stat"><div class="val">${d.total_normales.toLocaleString()}</div><div class="lbl">Registros normales</div></div>
+    `;
+    document.getElementById('ml-anomaly-insight').innerHTML = `<strong>Insight:</strong> ${d.insight}`;
+
+    mkChart('chart-anomaly-prov', 'bar', {
+      labels: d.top_proveedores.labels,
+      datasets: [{ label: 'Anomalías detectadas', data: d.top_proveedores.values, backgroundColor: PALETTE[4], borderRadius: 4 }]
+    }, { indexAxis:'y', plugins:{legend:{display:false}} });
+
+    mkChart('chart-anomaly-scatter', 'scatter', {
+      datasets: [
+        { label: 'Normal', data: d.scatter.normal_x.map((x,i)=>({x, y:d.scatter.normal_y[i]})), backgroundColor:'rgba(168,154,232,.4)', pointRadius:3 },
+        { label: 'Anómalo', data: d.scatter.anomaly_x.map((x,i)=>({x, y:d.scatter.anomaly_y[i]})), backgroundColor:'rgba(139,0,56,.8)', pointRadius:5 }
+      ]
+    }, {
+      scales:{
+        x:{title:{display:true,text:'Cumplimiento %',color:'#c090b8'},grid:{color:gridColor},ticks:{color:'#c090b8'}},
+        y:{title:{display:true,text:'Total Defectos',color:'#c090b8'},grid:{color:gridColor},ticks:{color:'#c090b8'}}
+      }
+    });
+  }
+
+  if(name === 'forecast') {
+    const d = await get('/api/ml/forecast');
+    document.getElementById('ml-forecast-meta').innerHTML = `
+      <div class="ml-stat"><div class="val">${d.model}</div><div class="lbl">Modelo</div></div>
+      <div class="ml-stat"><div class="val">${(d.r2*100).toFixed(1)}%</div><div class="lbl">R² Score</div></div>
+      <div class="ml-stat"><div class="val">${d.tendencia > 0 ? '+' : ''}${d.tendencia.toLocaleString('es-CO',{maximumFractionDigits:0})}</div><div class="lbl">Tendencia tallos/semana</div></div>
+      <div class="ml-stat"><div class="val">+4 semanas</div><div class="lbl">Horizonte de forecast</div></div>
+    `;
+    document.getElementById('ml-forecast-insight').innerHTML = `<strong>Insight:</strong> ${d.insight}`;
+
+    const allSems = [...d.semanas_hist, ...d.semanas_forecast];
+    const allHist = [...d.tallos_hist, ...Array(d.semanas_forecast.length).fill(null)];
+    const allFit  = [...d.tallos_fitted, ...Array(d.semanas_forecast.length).fill(null)];
+    const allFore = [...Array(d.semanas_hist.length).fill(null), ...d.tallos_forecast];
+
+    mkChart('chart-forecast', 'line', {
+      labels: allSems,
+      datasets: [
+        { label: 'Tallos Reales', data: allHist, borderColor: PALETTE[0], backgroundColor:'rgba(168,154,232,.08)', fill:true, tension:0.3 },
+        { label: 'Tendencia (fitted)', data: allFit, borderColor: PALETTE[2], borderDash:[4,4], pointRadius:0, tension:0 },
+        { label: 'Forecast (+4 sem)', data: allFore, borderColor: PALETTE[3], backgroundColor:'rgba(245,158,11,.12)', fill:true, borderDash:[3,3], pointRadius:5 }
+      ]
+    });
+  }
+}
+
+// ── PAGE LOADER ──
+function loadPage(name) {
+  if(name === 'problematics') {} // static
+  if(name === 'dataset') loadDatasetInfo();
+  if(name === 'kpis') loadKPICharts();
+  if(name === 'suppliers') loadSuppliers();
+  if(name === 'quality') loadQuality();
+  if(name === 'ml') { mlLoaded['compliance'] = true; loadML('compliance'); }
+}
+
+// ── INIT ──
+(async function init() {
+  await loadKPIs();
+  initializedPages['problematics'] = true;
+})();
+</script>
+</body>
+</html>
